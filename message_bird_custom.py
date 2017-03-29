@@ -21,9 +21,8 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_API_KEY): cv.string,
     vol.Optional(CONF_SENDER, default='HA'):
         vol.All(cv.string, vol.Match(r"^(\+?[1-9]\d{1,14}|\w{1,11})$")),
-    vol.Optional(CONF_METHOD, default='en-GB'),
-    vol.Optional(CONF_CUSTOMIZE, default='female'):
-        vol.All(cv.string, vol.Match(r"^(\+?[1-9]\d{1,14}|\w{1,11})$")),
+    vol.Optional(CONF_METHOD, default='en-GB'): cv.string,
+    vol.Optional(CONF_CUSTOMIZE, default='female'): cv.string,
 })
 
 
@@ -50,22 +49,27 @@ class MessageBirdNotificationService(BaseNotificationService):
         """Initialize the service."""
         self.sender = sender
         self.client = client
-        self.method = method
-        self.customize = customize
+        self.language = method
+        self.gender = customize
 
     def send_message(self, message=None, **kwargs):
         """Send a message to a specified target."""
         from messagebird.client import ErrorException
 
         targets = kwargs.get(ATTR_TARGET)
-        title = kwargs.get(ATTR_TITLE)
+        type = kwargs.get(ATTR_TITLE)
         if not targets:
             _LOGGER.error('No target specified.')
             return
 
         for target in targets:
             try:
-                self.client.voice_message_create(self.sender,
+                if type == 'voice':
+                    self.client.voice_message_create(target,
+                                               message,
+                                               {'language': self.language, 'voice': self.gender, 'originator': self.sender, 'reference': 'HA'})
+                else:
+                    self.client.message_create(self.sender,
                                            target,
                                            message,
                                            {'reference': 'HA'})
